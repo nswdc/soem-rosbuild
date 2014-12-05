@@ -584,7 +584,7 @@ int ecx_config_map_group(ecx_contextt *context, void *pIOmap, uint8 group)
                   if (context->slavelist[slave].CoEdetails & ECT_COEDET_SDOCA) /* has Complete Access */
                      /* read PDO mapping via CoE and use Complete Access */
                   {
-                     rval = ecx_readPDOmapCA(context, slave, &Osize, &Isize);
+                     //rval = ecx_readPDOmapCA(context, slave, &Osize, &Isize);
                   }
                   if (!rval) /* CA not available or not succeeded */
                   {
