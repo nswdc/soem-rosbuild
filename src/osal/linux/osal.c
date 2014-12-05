@@ -19,7 +19,7 @@
  */
 
 #include <time.h>
-#include <sys/time.h>
+#include <posix/time.h>
 #include <unistd.h>
 #include <osal.h>
 
@@ -43,7 +43,7 @@ int osal_gettimeofday(struct timeval *tv, struct timezone *tz)
     * Gettimeofday uses CLOCK_REALTIME that can get NTP timeadjust.
     * If this function preempts timeadjust and it uses vpage it live-locks.
     * Also when using XENOMAI, only clock_gettime is RT safe */
-   return_value = clock_gettime (CLOCK_MONOTONIC, &ts), 0;
+   return_value = clock_gettime (CLOCK_HOST_REALTIME, &ts), 0;
    tv->tv_sec = ts.tv_sec;
    tv->tv_usec = ts.tv_nsec / 1000;
    return return_value;
@@ -69,13 +69,22 @@ void osal_timer_start (osal_timert * self, uint32 timeout_usec)
    osal_gettimeofday (&start_time, 0);
    timeout.tv_sec = timeout_usec / USECS_PER_SEC;
    timeout.tv_usec = timeout_usec % USECS_PER_SEC;
-   timeradd (&start_time, &timeout, &stop_time);
-
+   //Alternative solution for realtime
+	do {									      
+    (&stop_time)->tv_sec = (&start_time)->tv_sec + (&timeout)->tv_sec;			      
+    (&stop_time)->tv_usec = (&start_time)->tv_usec + (&timeout)->tv_usec;			      
+    if ((&stop_time)->tv_usec >= 1000000)					      
+      {									      
+	++(&stop_time)->tv_sec;						      
+	(&stop_time)->tv_usec -= 1000000;			
+      }									      
+  } while (0);
+	
    self->stop_time.sec = stop_time.tv_sec;
    self->stop_time.usec = stop_time.tv_usec;
 }
 
-boolean osal_timer_is_expired (const osal_timert * self)
+boolean osal_timer_is_expired (osal_timert * self)
 {
    struct timeval current_time;
    struct timeval stop_time;
@@ -84,7 +93,8 @@ boolean osal_timer_is_expired (const osal_timert * self)
    osal_gettimeofday (&current_time, 0);
    stop_time.tv_sec = self->stop_time.sec;
    stop_time.tv_usec = self->stop_time.usec;
-   is_not_yet_expired = timercmp (&current_time, &stop_time, <);
+   //Alternative solution for realtime
+   is_not_yet_expired = (((&current_time)->tv_sec == (&stop_time)->tv_sec) ? ((&current_time)->tv_usec < (&stop_time)->tv_usec):((&current_time)->tv_sec < (&stop_time)->tv_sec));
 
    return is_not_yet_expired == FALSE;
 }
